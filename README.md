@@ -263,3 +263,132 @@ busybox          latest    3f57d9401f8d   5 weeks ago     4.26MB
 ```
 
 The busybox image is only 4.26MB!
+
+**Remember**: Busybox is not a full-featured Linux OS, it is just a set of Linux utils, you can prove this by trying to run `cat /etc/os-release` on a busybox container, the result will be `no such file or directory`.
+
+## Alpine
+
+Alpine is an image based in busybox. Read more at https://hub.docker.com/_/alpine
+
+Executables in Alpine are actually links to busybox utilities:
+
+```
+ALPINE/ # ls -l bin/
+total 792
+lrwxrwxrwx    1 root     root            12 Jan 26 17:53 arch -> /bin/busybox
+lrwxrwxrwx    1 root     root            12 Jan 26 17:53 ash -> /bin/busybox
+lrwxrwxrwx    1 root     root            12 Jan 26 17:53 base64 -> /bin/busybox
+lrwxrwxrwx    1 root     root            12 Jan 26 17:53 bbconfig -> /bin/busybox
+-rwxr-xr-x    1 root     root        808712 Nov  7 18:53 busybox     ATTENTION HERE
+lrwxrwxrwx    1 root     root            12 Jan 26 17:53 cat -> /bin/busybox
+lrwxrwxrwx    1 root     root            12 Jan 26 17:53 chattr -> /bin/busybox
+--more lines...--
+```
+
+With this you can confirm Alpine is based in busybox and busybox is just a set of utilities:
+
+```
+ALPINE/ # ls -l /bin/ping
+lrwxrwxrwx    1 root     root            12 Jan 26 17:53 /bin/ping -> /bin/busybox
+ALPINE/ #
+ALPINE/ # busybox ping -c 4 google.com
+PING google.com (142.251.34.14): 56 data bytes
+64 bytes from 142.251.34.14: seq=0 ttl=53 time=31.510 ms
+64 bytes from 142.251.34.14: seq=1 ttl=53 time=11.768 ms
+64 bytes from 142.251.34.14: seq=2 ttl=53 time=14.854 ms
+64 bytes from 142.251.34.14: seq=3 ttl=53 time=14.797 ms
+
+--- google.com ping statistics ---
+4 packets transmitted, 4 packets received, 0% packet loss
+round-trip min/avg/max = 11.768/18.232/31.510 ms
+ALPINE/ #
+```
+
+You can find more links and commands at `/sbin`, you can find `/sbin/apk` command which is useful to install packages inside the Alpine container, this command is not present in the busybox container:
+
+```
+BUSYBOX/ # apk --version
+sh: apk: not found
+BUSYBOX/ #
+```
+
+```
+ALPINE/ # apk --version
+apk-tools 2.14.0, compiled for x86_64.
+ALPINE/ #
+```
+
+## NGINX
+
+Nginx (pronounced "engine-x") is an open source reverse proxy server for HTTP, HTTPS, SMTP, POP3, and IMAP protocols, as well as a load balancer, HTTP cache, and a web server (origin server).
+
+Read more at: https://hub.docker.com/_/nginx
+
+### Pull NGINX Image
+
+`docker pull nginx`
+
+Note: when you are downloading a docker image it is very likely to see an output similar to this one:
+
+```
+$ docker pull nginx
+Using default tag: latest
+latest: Pulling from library/nginx
+c499e6d25d6: Pulling fs layer
+- more lines... -
+```
+
+The `fs` in `Pulling fs layer` means `file system`
+
+### Explore The Image
+
+```
+$ docker images
+REPOSITORY                                TAG       IMAGE ID       CREATED         SIZE
+nginx                                     latest    e4720093a3c1   12 days ago     187MB
+```
+
+You can see the NGINX image is heavier than the other images we already saw.
+
+### Create A NGINX Container
+
+```
+$ docker run nginx
+- no output -
+```
+
+This time the container did NOT show any output but we can see that we are still inside the container because we are not seeing the host prompt.
+
+We can confirm this by opening a new terminal a checking the containers:
+
+```
+$ docker ps
+CONTAINER ID   IMAGE   COMMAND                  CREATED         STATUS         PORTS    NAMES
+2bc75d28aaab   nginx   "/docker-entrypoint.…"   5 minutes ago   Up 5 minutes   80/tcp   zen_benz
+```
+
+You can confirm the NGINX container is still up.
+
+## Port Mapping
+
+A we sa in the NGINX section, the NGINX container had an open port 80/tcp:
+
+```
+$ docker ps
+CONTAINER ID   IMAGE   COMMAND                  CREATED         STATUS         PORTS    NAMES
+2bc75d28aaab   nginx   "/docker-entrypoint.…"   5 minutes ago   Up 5 minutes   80/tcp   zen_benz
+```
+
+If we want to access that port using the web browser we can go to localhost:80
+
+Unfortunately this won't work, and that is because the NGINX container does not have a mapped port with the host OS.
+
+Let's create a new NGINX container and map one port in the host to the container:
+
+`$ docker run --rm -p 8080:80 --name myMappedNginx nginx`
+
+`-p` option is used to create the port mapping, the first number represents the port in the host and the second number after the colon `:` is the port in the container.
+
+Now let's open localhost:8080 (this time we use 8080 because that's the connection we have from the host to the container.):
+
+![nginx_browser.png](./media/img/nginx_browser.png)
