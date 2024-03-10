@@ -156,7 +156,15 @@ $ docker container rm 087
 087
 ```
 
+> You can also select multiple containers to rm just by adding a space between the ids.
+
 If you have more containers that start with the same numbers then you will need to provide enough numbers no make the search unique.
+
+You can remove all stopped/exited containers using:
+
+```
+docker container prune
+```
 
 ### Remove an image
 
@@ -197,6 +205,7 @@ the `-it` flag is used to allocate a pseudo-TTY (terminal) and keep the stdin (s
 
 - `-i` stands for interactive. It keeps STDIN open even if not attached. This allows you to interact with the command running inside the container.
     - "attached" refers to the act of connecting your local terminal to the standard input (stdin), standard output (stdout), and standard error (stderr) streams of a running container. So `-i` means keep the stdin of the container even if is not connected to my local terminal.
+    - The `-i` option works without the `-t` option but not the other way around. `-t` attach a pseudo-tty but still need the stdin to be open.
 - `-t` stands for allocate a pseudo-TTY. This simulates a terminal, allowing you to interact with the shell (bash in this case) as if you were directly connected to it.
     - `-t` option attaches the pseudo-tty to your local terminal.
 
@@ -320,7 +329,9 @@ ALPINE/ #
 
 ### Stopping A Container
 
-The `docker container stop <contianer_id>` is used to stop a container, when you issue this command against an alpine container docker sends a signal called `SIGTERM` but `sh` does NOT react to it and in 10 seconds docker fallbacks to `docker container kill` that sends a `SIGKILL` to the container.
+The `docker container stop <contianer_id>` is used to stop a container, when you issue this command against an **alpine** container docker sends a signal called `SIGTERM` but `sh` does NOT react to it and in 10 seconds docker fallbacks to `docker container kill` that sends a `SIGKILL` to the container. Other containers like NGINX work with `docker container stop <container_id>` without problems.
+
+Also when you are in the shell terminal of an **alpine** container it also does not respond to `Ctrl+C`, in this case a `SIGINT` is sent but sh does not accept such commands, the workaround is to use `exit` command or use `docker container stop <container_id>`.
 
 ## NGINX
 
@@ -425,4 +436,127 @@ You can run containers in the background by using the `-d` (detached) option:
 
 ```
 docker container run --rm -p 8081:80 -d nginx
+d62d9a5621f420eca502b5beb15ed3dff50fd21c90d2723daf8a1c985a88b5a2
 ```
+
+You can see the container id is shown right after pressing enter.
+
+You can access the logs of the container using this command:
+
+```
+docker container logs <container_id>
+```
+
+You can stop the container using:
+
+```
+docker container stop <container_id>
+```
+
+## Playing With An Ubuntu Container
+
+1. The hostname is actually the container id:
+
+```
+$ docker container run --rm -it --name ubun1 ubuntu bash
+root@226c2bdb5278:/# hostname
+226c2bdb5278
+```
+
+Confirm this by opening another terminal tab:
+
+```
+$ docker ps
+CONTAINER ID   IMAGE     COMMAND   CREATED          STATUS          PORTS     NAMES
+226c2bdb5278   ubuntu    "bash"    24 seconds ago   Up 23 seconds             ubun1
+```
+
+2. Use `hostname -i` to see the ip address:
+
+```
+root@226c2bdb5278:/# hostname -i
+172.17.0.2
+root@226c2bdb5278:/#
+```
+
+3. The IP address is actually part of the bridge network created by docker, confirm this by creating a second ubuntu container (do not stop the first one):
+
+```
+$ docker container run --rm -it --name ubun2 ubuntu bash   <- Second container
+root@41d33075f063:/# hostname -i
+172.17.0.3
+root@41d33075f063:/#
+```
+
+Now let's ping the first container:
+
+```
+# Let's first install ping on the second container:
+root@41d33075f063:/# apt-get update
+root@41d33075f063:/# apt-get install iputils-ping
+
+# Now let's ping the first container:
+root@41d33075f063:/# ping -c4 172.17.0.2
+PING 172.17.0.2 (172.17.0.2) 56(84) bytes of data.
+64 bytes from 172.17.0.2: icmp_seq=1 ttl=64 time=0.170 ms
+64 bytes from 172.17.0.2: icmp_seq=2 ttl=64 time=0.113 ms
+64 bytes from 172.17.0.2: icmp_seq=3 ttl=64 time=0.104 ms
+64 bytes from 172.17.0.2: icmp_seq=4 ttl=64 time=0.114 ms
+
+--- 172.17.0.2 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3135ms
+rtt min/avg/max/mdev = 0.104/0.125/0.170/0.026 ms
+root@41d33075f063:/#
+```
+
+
+## Python Containers
+
+https://hub.docker.com/_/python
+
+Let's start by pulling the latest image:
+
+```
+docker container run --rm -it --name mypy python
+```
+
+> If you don't want to create a container you can just pull the image `docker container pull python`
+
+Once the above command is executed you will see the python interpreter:
+
+```
+$ docker container run --rm -it --name mypy python
+Python 3.12.2 (main, Feb 13 2024, 09:17:46) [GCC 12.2.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> print("HELLO PYTHON WORLD :D")
+HELLO PYTHON WORLD :D
+>>>
+```
+
+You can see the default command for the Python image was `python3`:
+
+```
+$ docker ps
+CONTAINER ID   IMAGE     COMMAND     CREATED          STATUS          PORTS     NAMES
+107a47ca7f97   python    "python3"   36 seconds ago   Up 35 seconds             mypy
+```
+
+> You can also see this by inspecting the image: `$ docker image inspect python:latest`
+
+### Run a single Python script
+
+```
+$ docker container run -it --rm -v "$PWD":/usr/src/myapp -w /usr/src/myapp python python app.py
+Enter the height of the Christmas tree: 6 
+     *
+    ***
+   *****
+  *******
+ *********
+***********
+     |
+```
+- The `-w` option in the command specifies the working directory inside the container. You can omit this option if you specify the path in the command: `python /usr/src/myapp/app.py`.
+- After the name of the image you can specify the command to run, that's why you see `python app.py` at the end.
+
+> `app.py` can be found at [app.py](./containers/python/app.py)
