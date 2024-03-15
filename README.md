@@ -329,7 +329,7 @@ ALPINE/ #
 
 ### Stopping A Container
 
-The `docker container stop <contianer_id>` is used to stop a container, when you issue this command against an **alpine** container docker sends a signal called `SIGTERM` but `sh` does NOT react to it and in 10 seconds docker fallbacks to `docker container kill` that sends a `SIGKILL` to the container. Other containers like NGINX work with `docker container stop <container_id>` without problems.
+The `docker container stop <container_id>` is used to stop a container, when you issue this command against an **alpine** container docker sends a signal called `SIGTERM` but `sh` does NOT react to it and in 10 seconds docker fallbacks to `docker container kill` that sends a `SIGKILL` to the container. Other containers like NGINX work with `docker container stop <container_id>` without problems (you can also use `docker container kill <container_id>`).
 
 Also when you are in the shell terminal of an **alpine** container it also does not respond to `Ctrl+C`, in this case a `SIGINT` is sent but sh does not accept such commands, the workaround is to use `exit` command or use `docker container stop <container_id>`.
 
@@ -560,3 +560,49 @@ Enter the height of the Christmas tree: 6
 - After the name of the image you can specify the command to run, that's why you see `python app.py` at the end.
 
 > `app.py` can be found at [app.py](./containers/python/app.py)
+
+## Node Container
+
+Pull the image:
+
+```
+docker pull node
+```
+
+Create a node container:
+
+```
+docker container run -it node
+Welcome to Node.js v21.7.1.
+Type ".help" for more information.
+> console.log("Hello World")
+Hello World
+undefined
+>
+```
+
+Run a file:
+
+```
+$ docker container run --rm -it -v "$PWD"/containers/node:/usr/app -w /usr/app node node hello.js
+Executed by NodeJs Container 😎
+```
+
+> file [hello.js](./containers/node/hello.js)
+
+### Express App
+
+1. Create an index.js file a basic express app, example [here](./containers/node/express/index.js)
+2. Initialize a npm project:
+    ```
+    docker container run --rm -it -v "$PWD"/containers/node/express:/usr/app -p 8083:3000 -w /usr/app node npm init
+    ```
+3. Install dependencies:
+    ```
+    docker container run --rm -it -v "$PWD"/containers/node/express:/usr/app -p 8083:3000 -w /usr/app node npm install express
+    ```
+4. Execute the express app:
+    ```
+    docker container run --rm -it -v "$PWD"/containers/node/express:/usr/app -p 8083:3000 -w /usr/app node node index.js
+    ```
+5. Open http://localhost:8083/ in your browser.
